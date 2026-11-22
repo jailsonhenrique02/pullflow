@@ -1,0 +1,25 @@
+# Ambiente virtual e cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# Variáveis de ambiente e segredos
+.env
+.env.*
+*.sqlite3
+
+# VS Code e Windows
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+Thumbs.db
+Desktop.ini
+
+# Build / empacotamento
+build/
+dist/
+*.spec

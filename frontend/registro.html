@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PullFlow | Registro Manual</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen">
+
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-4">
+            <div class="bg-blue-600 text-white font-black text-xl px-3 py-1 rounded tracking-widest">
+                PULL<span class="text-blue-200">FLOW</span>
+            </div>
+            <span class="text-sm font-bold tracking-wider text-slate-200 uppercase">Registro manual (piloto)</span>
+        </div>
+        <a href="./" class="text-sm font-bold uppercase tracking-wider bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-2 rounded-md">
+            &larr; Voltar ao painel
+        </a>
+    </header>
+
+    <div id="toast" class="hidden fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-sm font-bold shadow-xl max-w-sm"></div>
+
+    <main class="p-6 max-w-6xl mx-auto grid gap-6">
+
+        <!-- 1. Materiais -->
+        <section class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <h2 class="text-blue-400 font-bold uppercase tracking-widest text-xs mb-1">01. Materiais de alto giro</h2>
+            <p class="text-slate-400 text-sm mb-4">Cadastre só os materiais que precisam estar sempre abastecidos. Se o código já existir, os dados são atualizados.</p>
+
+            <form id="form-material" class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+                <label class="md:col-span-2 text-xs uppercase tracking-wider text-slate-400">Código (SKU)
+                    <input id="m-sku" required maxlength="40" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-slate-100 font-mono normal-case" placeholder="MAT-1234">
+                </label>
+                <label class="md:col-span-4 text-xs uppercase tracking-wider text-slate-400">Descrição
+                    <input id="m-desc" required maxlength="120" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-slate-100">
+                </label>
+                <label class="md:col-span-2 text-xs uppercase tracking-wider text-slate-400">Canaleta do Flow Rack
+                    <input id="m-canaleta" required maxlength="80" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-slate-100" placeholder="FLOW RACK - CANALETA 03">
+                </label>
+                <label class="text-xs uppercase tracking-wider text-slate-400">Saldo atual (cx)
+                    <input id="m-saldo" type="number" min="0" value="0" required class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-slate-100 font-mono">
+                </label>
+                <label class="text-xs uppercase tracking-wider text-slate-400">Estoque mínimo
+                    <input id="m-min" type="number" min="0" value="10" required class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-slate-100 font-mono">
+                </label>
+                <label class="text-xs uppercase tracking-wider text-slate-400">Ponto de pedido
+                    <input id="m-pp" type="number" min="0" value="30" required class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-slate-100 font-mono">
+                </label>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm tracking-wider uppercase py-2.5 rounded-lg">Salvar material</button>
+            </form>
+
+            <div class="overflow-x-auto mt-5">
+                <table class="w-full text-sm">
+                    <thead class="text-xs uppercase tracking-wider text-slate-400 text-left">
+                        <tr class="border-b border-slate-800">
+                            <th class="py-2 pr-3">Código</th>
+                            <th class="py-2 pr-3">Descrição</th>
+                            <th class="py-2 pr-3">Canaleta</th>
+                            <th class="py-2 pr-3 text-right">Saldo</th>
+                            <th class="py-2 pr-3 text-right">Mín / Pedido</th>
+                            <th class="py-2 pr-3 text-right">Paletes</th>
+                            <th class="py-2 pr-3">Status</th>
+                            <th class="py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-materiais"></tbody>
+                </table>
+                <p id="sem-materiais" class="hidden text-slate-500 text-sm py-4">Nenhum material cadastrado ainda.</p>
+            </div>
+        </section>
+
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- 2. Entrada de palete -->
+            <section class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                <h2 class="text-blue-400 font-bold uppercase tracking-widest text-xs mb-1">02. Palete no porta-palete</h2>
+                <p class="text-slate-400 text-sm mb-4">A data de fabricação define a ordem FIFO: o mais antigo é sugerido primeiro.</p>
+                <form id="form-palete" class="grid gap-3">
+                    <label class="text-xs uppercase tracking-wider text-slate-400">Material
+                        <select id="p-sku" required class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-slate-100 font-mono"></select>
+                    </label>
+                    <label class="text-xs uppercase tracking-wider text-slate-400">Etiqueta do palete
+                        <input id="p-etiqueta" required maxlength="60" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-slate-100 font-mono" placeholder="PLT-00492">
+                    </label>
+                    <label class="text-xs uppercase tracking-wider text-slate-400">Endereço
+                        <input id="p-endereco" required maxlength="80" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-slate-100" placeholder="RUA B / PRÉDIO 04 / NÍVEL 1">
+                    </label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="text-xs uppercase tracking-wider text-slate-400">Quantidade (cx)
+                            <input id="p-qtd" type="number" min="1" required class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-slate-100 font-mono">
+                        </label>
+                        <label class="text-xs uppercase tracking-wider text-slate-400">Data de fabricação
+                            <input id="p-data" type="datetime-local" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-slate-100">
+                        </label>
+                    </div>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm tracking-wider uppercase py-2.5 rounded-lg">Registrar palete</button>
+                </form>
+            </section>
+
+            <!-- 3. Baixa -->
+            <section class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                <h2 class="text-blue-400 font-bold uppercase tracking-widest text-xs mb-1">03. Consumo da produção (baixa)</h2>
+                <p class="text-slate-400 text-sm mb-4">Diminui o saldo da canaleta. Quando passar do ponto de pedido, o cartão aparece no painel.</p>
+                <form id="form-baixa" class="grid gap-3">
+                    <label class="text-xs uppercase tracking-wider text-slate-400">Material
+                        <select id="b-sku" required class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-slate-100 font-mono"></select>
+                    </label>
+                    <label class="text-xs uppercase tracking-wider text-slate-400">Quantidade consumida (cx)
+                        <input id="b-qtd" type="number" min="1" required class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-slate-100 font-mono">
+                    </label>
+                    <button type="submit" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm tracking-wider uppercase py-2.5 rounded-lg">Registrar baixa</button>
+                </form>
+                <p id="b-resultado" class="text-slate-300 text-sm mt-4 font-mono"></p>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        // Funciona abrindo por http://localhost:8000/painel/registro.html (recomendado)
+        const API = location.protocol.startsWith('http') ? location.origin : 'http://localhost:8000';
+
+        const $ = id => document.getElementById(id);
+        const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+        function aviso(texto, ok = true) {
+            const el = $('toast');
+            el.textContent = texto;
+            el.className = 'fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-sm font-bold shadow-xl max-w-sm ' +
+                (ok ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white');
+            clearTimeout(aviso.t);
+            aviso.t = setTimeout(() => el.classList.add('hidden'), 4000);
+        }
+
+        async function api(caminho, opcoes) {
+            let resp;
+            try {
+                resp = await fetch(API + caminho, opcoes);
+            } catch (e) {
+                throw new Error('Sem conexão com a API. Ela está rodando?');
+            }
+            let dados = null;
+            try { dados = await resp.json(); } catch (e) {}
+            if (!resp.ok) {
+                const d = dados && dados.detail;
+                const msg = typeof d === 'string' ? d
+                    : Array.isArray(d) ? d.map(x => x.msg).join('; ')
+                    : 'Erro ' + resp.status;
+                throw new Error(msg);
+            }
+            return dados;
+        }
+
+        const post = (caminho, corpo) => api(caminho, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(corpo)
+        });
+
+        let materiais = [];
+
+        async function carregar() {
+            try {
+                materiais = await api('/materiais');
+            } catch (e) {
+                aviso(e.message, false);
+                return;
+            }
+
+            const corpo = $('tabela-materiais');
+            $('sem-materiais').classList.toggle('hidden', materiais.length > 0);
+            corpo.innerHTML = materiais.map(m => {
+                const cor = m.status === 'CRITICO' ? 'text-red-400'
+                          : m.status === 'ATENCAO' ? 'text-amber-300' : 'text-emerald-400';
+                const rotulo = m.status === 'CRITICO' ? 'Crítico'
+                             : m.status === 'ATENCAO' ? 'Atenção' : 'OK';
+                return `
+                <tr class="border-b border-slate-800/70">
+                    <td class="py-2 pr-3 font-mono font-bold">${esc(m.sku)}</td>
+                    <td class="py-2 pr-3">${esc(m.descricao)}</td>
+                    <td class="py-2 pr-3 text-slate-300">${esc(m.canaleta_destino)}</td>
+                    <td class="py-2 pr-3 text-right font-mono">${m.saldo_rack}</td>
+                    <td class="py-2 pr-3 text-right font-mono text-slate-400">${m.estoque_minimo} / ${m.ponto_pedido}</td>
+                    <td class="py-2 pr-3 text-right font-mono">${m.paletes_disponiveis}</td>
+                    <td class="py-2 pr-3 font-bold ${cor}">${rotulo}</td>
+                    <td class="py-2 text-right whitespace-nowrap">
+                        <button data-acao="editar" data-sku="${esc(m.sku)}" class="text-blue-400 hover:text-blue-300 text-xs font-bold uppercase mr-3">Editar</button>
+                        <button data-acao="apagar" data-sku="${esc(m.sku)}" class="text-red-400 hover:text-red-300 text-xs font-bold uppercase">Apagar</button>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            const opcoes = materiais.length
+                ? materiais.map(m => `<option value="${esc(m.sku)}">${esc(m.sku)} - ${esc(m.descricao)}</option>`).join('')
+                : '<option value="">Cadastre um material primeiro</option>';
+            const selPalete = $('p-sku').value, selBaixa = $('b-sku').value;
+            $('p-sku').innerHTML = opcoes;
+            $('b-sku').innerHTML = opcoes;
+            if (selPalete) $('p-sku').value = selPalete;
+            if (selBaixa) $('b-sku').value = selBaixa;
+        }
+
+        $('tabela-materiais').addEventListener('click', async ev => {
+            const botao = ev.target.closest('button[data-acao]');
+            if (!botao) return;
+            const sku = botao.dataset.sku;
+
+            if (botao.dataset.acao === 'editar') {
+                const m = materiais.find(x => x.sku === sku);
+                if (!m) return;
+                $('m-sku').value = m.sku;
+                $('m-desc').value = m.descricao;
+                $('m-canaleta').value = m.canaleta_destino;
+                $('m-saldo').value = m.saldo_rack;
+                $('m-min').value = m.estoque_minimo;
+                $('m-pp').value = m.ponto_pedido;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (botao.dataset.acao === 'apagar') {
+                if (!confirm(`Apagar o material ${sku} e todos os paletes e baixas dele?`)) return;
+                try {
+                    await api('/materiais/' + encodeURIComponent(sku), { method: 'DELETE' });
+                    aviso(`Material ${sku} apagado.`);
+                    carregar();
+                } catch (e) { aviso(e.message, false); }
+            }
+        });
+
+        $('form-material').addEventListener('submit', async ev => {
+            ev.preventDefault();
+            try {
+                const r = await post('/materiais', {
+                    sku: $('m-sku').value,
+                    descricao: $('m-desc').value,
+                    canaleta_destino: $('m-canaleta').value,
+                    saldo_rack: parseInt($('m-saldo').value, 10),
+                    estoque_minimo: parseInt($('m-min').value, 10),
+                    ponto_pedido: parseInt($('m-pp').value, 10)
+                });
+                aviso(`Material ${r.sku} salvo.`);
+                ev.target.reset();
+                $('m-saldo').value = 0; $('m-min').value = 10; $('m-pp').value = 30;
+                carregar();
+            } catch (e) { aviso(e.message, false); }
+        });
+
+        $('form-palete').addEventListener('submit', async ev => {
+            ev.preventDefault();
+            try {
+                await post('/paletes', {
+                    sku: $('p-sku').value,
+                    etiqueta: $('p-etiqueta').value,
+                    endereco: $('p-endereco').value,
+                    quantidade: parseInt($('p-qtd').value, 10),
+                    data_fab: $('p-data').value || null
+                });
+                aviso('Palete registrado.');
+                $('p-etiqueta').value = '';
+                $('p-qtd').value = '';
+                carregar();
+            } catch (e) { aviso(e.message, false); }
+        });
+
+        $('form-baixa').addEventListener('submit', async ev => {
+            ev.preventDefault();
+            try {
+                const r = await post('/baixas', {
+                    sku: $('b-sku').value,
+                    quantidade: parseInt($('b-qtd').value, 10)
+                });
+                $('b-resultado').textContent = `${r.sku}: saldo agora é ${r.saldo_rack} cx`;
+                aviso('Baixa registrada.');
+                $('b-qtd').value = '';
+                carregar();
+            } catch (e) { aviso(e.message, false); }
+        });
+
+        carregar();
+    </script>
+</body>
+</html>

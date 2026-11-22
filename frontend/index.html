@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PullFlow | Gestão Visual de Abastecimento FIFO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse-border {
+            0%, 100% { border-color: #ef4444; box-shadow: 0 0 18px rgba(239, 68, 68, 0.35); }
+            50% { border-color: #7f1d1d; box-shadow: 0 0 4px rgba(239, 68, 68, 0.1); }
+        }
+        .alerta-critico {
+            animation: pulse-border 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col select-none">
+
+    <!-- Cabeçalho Corporativo / Industrial -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center shadow-md">
+        <div class="flex items-center gap-4">
+            <div class="bg-blue-600 text-white font-black text-2xl px-3.5 py-1 rounded tracking-widest">
+                PULL<span class="text-blue-200">FLOW</span>
+            </div>
+            <div class="hidden sm:flex flex-col border-l border-slate-700 pl-4">
+                <span class="text-sm font-bold tracking-wider text-slate-200 uppercase">Sistema de Abastecimento Puxado</span>
+                <span class="text-xs text-slate-400">Controle de Fluxo e Endereçamento FIFO</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-6">
+            <div id="status-conexao" class="flex items-center gap-2.5 text-xs uppercase tracking-wider bg-slate-800/90 border border-slate-700 px-3.5 py-2 rounded-md">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-slate-300 font-semibold">Sistema Online</span>
+            </div>
+            <div id="relogio" class="text-2xl font-mono font-bold text-slate-200 tracking-wider">
+                00:00:00
+            </div>
+        </div>
+    </header>
+
+    <!-- Barra de Indicadores (KPIs de Turno) -->
+    <div class="bg-slate-900/60 border-b border-slate-800 px-6 py-3 flex items-center justify-between text-xs uppercase tracking-wider">
+        <div class="flex gap-8">
+            <div class="flex items-center gap-2.5">
+                <span class="w-3 h-3 rounded-xs bg-red-500"></span>
+                <span class="text-slate-400 font-semibold">Prioridade Crítica: <strong id="cont-critico" class="text-white text-base ml-1 font-mono">0</strong></span>
+            </div>
+            <div class="flex items-center gap-2.5">
+                <span class="w-3 h-3 rounded-xs bg-amber-400"></span>
+                <span class="text-slate-400 font-semibold">Ponto de Pedido: <strong id="cont-atencao" class="text-white text-base ml-1 font-mono">0</strong></span>
+            </div>
+        </div>
+        <div class="text-slate-500 font-mono hidden md:block">
+            ATUALIZAÇÃO AUTOMÁTICA: 5s
+        </div>
+    </div>
+
+    <!-- Área Principal dos Cartões de Requisição -->
+    <main class="flex-1 p-6">
+        <div id="grid-alertas" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <!-- Cartões inseridos via JavaScript -->
+        </div>
+
+        <!-- Estado Normal (Sem Pendências) -->
+        <div id="sem-alertas" class="hidden h-[65vh] flex flex-col items-center justify-center text-center">
+            <div class="w-20 h-20 rounded-full bg-emerald-500/10 border-2 border-emerald-500/80 flex items-center justify-center mb-5">
+                <svg class="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold tracking-wide text-emerald-400 uppercase mb-2">Operação Estabilizada</h2>
+            <p class="text-slate-400 text-base max-w-md">Todos os postos de Flow Rack operam acima do nível mínimo de segurança.</p>
+        </div>
+    </main>
+
+    <script>
+        const API_URL = "http://localhost:8000";
+
+        // Relógio digital sincronizado
+        setInterval(() => {
+            const agora = new Date();
+            document.getElementById('relogio').innerText = agora.toLocaleTimeString('pt-BR');
+        }, 1000);
+
+        // Base de demonstração caso o servidor local esteja desligado
+        let dadosSimulados = [
+            {
+                sku: "MAT-8842",
+                descricao: "CAIXA EMBALAGEM TIPO A - LINHA 01",
+                canaleta_destino: "FLOW RACK - CANALETA 03",
+                saldo_estimado: 8,
+                status_alerta: "CRITICO",
+                palete_fifo: {
+                    id_palete: 101,
+                    etiqueta: "PLT-00492",
+                    endereco: "RUA B / PRÉDIO 04 / NÍVEL 1",
+                    quantidade: 60,
+                    data_fab: "2026-11-10T08:00:00"
+                }
+            },
+            {
+                sku: "MAT-3190",
+                descricao: "SUPORTE PLÁSTICO INJETADO PRETO",
+                canaleta_destino: "FLOW RACK - CANALETA 07",
+                saldo_estimado: 22,
+                status_alerta: "ATENCAO",
+                palete_fifo: {
+                    id_palete: 105,
+                    etiqueta: "PLT-00518",
+                    endereco: "RUA A / PRÉDIO 12 / NÍVEL 2",
+                    quantidade: 80,
+                    data_fab: "2026-11-12T14:30:00"
+                }
+            }
+        ];
+
+        async function carregarAlertas() {
+            const statusEl = document.getElementById('status-conexao');
+            try {
+                const resposta = await fetch(`${API_URL}/painel-alertas`);
+                if (!resposta.ok) throw new Error("Falha de resposta");
+                const alertas = await resposta.json();
+                
+                statusEl.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span><span class="text-slate-200 font-semibold">Conectado ao Servidor</span>`;
+                renderizarPainel(alertas, false);
+            } catch (erro) {
+                statusEl.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span><span class="text-amber-300 font-semibold">Modo Demonstração (API Offline)</span>`;
+                renderizarPainel(dadosSimulados, true);
+            }
+        }
+
+        function renderizarPainel(alertas, modoSimulado) {
+            const grid = document.getElementById('grid-alertas');
+            const semAlertas = document.getElementById('sem-alertas');
+            
+            const criticos = alertas.filter(a => a.status_alerta === 'CRITICO').length;
+            const atencao = alertas.filter(a => a.status_alerta === 'ATENCAO').length;
+            
+            document.getElementById('cont-critico').innerText = criticos;
+            document.getElementById('cont-atencao').innerText = atencao;
+
+            if (alertas.length === 0) {
+                grid.innerHTML = "";
+                semAlertas.classList.remove('hidden');
+                return;
+            }
+
+            semAlertas.classList.add('hidden');
+            grid.innerHTML = alertas.map(item => {
+                const isCritico = item.status_alerta === 'CRITICO';
+                const bordaClasse = isCritico ? 'border-red-500 alerta-critico' : 'border-amber-400';
+                const badgeClasse = isCritico ? 'bg-red-600 text-white' : 'bg-amber-400 text-slate-950';
+                const textoStatus = isCritico ? 'CRÍTICO • RUPTURA IMINENTE' : 'ATENÇÃO • REPOSIÇÃO PROGRAMADA';
+
+                const palete = item.palete_fifo;
+                const dataFormatada = palete ? new Date(palete.data_fab).toLocaleDateString('pt-BR') : '--/--/----';
+
+                return `
+                <div class="bg-slate-900 border-2 ${bordaClasse} rounded-xl p-5 flex flex-col justify-between shadow-xl">
+                    <div>
+                        <!-- Cabeçalho do Cartão -->
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="px-2.5 py-1 rounded text-xs font-bold tracking-wider uppercase ${badgeClasse}">
+                                ${textoStatus}
+                            </span>
+                            <span class="text-slate-400 text-xs uppercase tracking-wider font-mono">
+                                Saldo Rack: <strong class="text-white text-sm">${item.saldo_estimado} CX</strong>
+                            </span>
+                        </div>
+
+                        <!-- Dados do Material -->
+                        <div class="mb-4 pb-3 border-b border-slate-800">
+                            <div class="text-3xl font-black text-white tracking-tight font-mono">${item.sku}</div>
+                            <div class="text-slate-300 text-sm font-medium uppercase truncate mt-0.5">${item.descricao}</div>
+                        </div>
+
+                        <!-- Origem: Endereço Porta-Palete (FIFO) -->
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3.5 mb-3">
+                            <div class="text-[11px] font-bold text-blue-400 uppercase tracking-widest mb-1">
+                                01. Origem Porta-Palete (Prioridade FIFO)
+                            </div>
+                            ${palete ? `
+                                <div class="text-xl font-black text-amber-300 tracking-wide font-mono my-1">
+                                    ${palete.endereco}
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 text-xs text-slate-400 mt-2.5 pt-2 border-t border-slate-800/80 font-mono">
+                                    <div>ID: <strong class="text-slate-200">${palete.etiqueta}</strong></div>
+                                    <div>FAB: <strong class="text-slate-200">${dataFormatada}</strong></div>
+                                    <div class="text-right">QTD: <strong class="text-slate-200">${palete.quantidade} CX</strong></div>
+                                </div>
+                            ` : `
+                                <div class="flex items-center gap-2 text-sm font-bold text-red-400 py-2 uppercase tracking-wide">
+                                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                    </svg>
+                                    <span>Saldo Reserva Indisponível</span>
+                                </div>
+                            `}
+                        </div>
+
+                        <!-- Destino: Canaleta Flow Rack -->
+                        <div class="bg-slate-800/50 border border-slate-700/60 rounded-lg p-3.5 mb-5 flex items-center justify-between">
+                            <div>
+                                <div class="text-[11px] font-bold text-emerald-400 uppercase tracking-widest">
+                                    02. Destino de Abastecimento
+                                </div>
+                                <div class="text-lg font-extrabold text-white tracking-wide mt-0.5">
+                                    ${item.canaleta_destino}
+                                </div>
+                            </div>
+                            <svg class="w-6 h-6 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Confirmação Operacional -->
+                    ${palete ? `
+                        <button onclick="confirmarAbastecimento('${item.sku}', ${palete.id_palete}, ${modoSimulado})"
+                            class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-sm tracking-wider uppercase py-3.5 rounded-lg transition cursor-pointer shadow-md flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span>Confirmar Abastecimento</span>
+                        </button>
+                    ` : ''}
+                </div>
+                `;
+            }).join('');
+        }
+
+        async function confirmarAbastecimento(sku, idPalete, modoSimulado) {
+            if (modoSimulado) {
+                dadosSimulados = dadosSimulados.filter(item => item.sku !== sku);
+                renderizarPainel(dadosSimulados, true);
+                return;
+            }
+
+            try {
+                const resposta = await fetch(`${API_URL}/confirmar-abastecimento/${sku}/${idPalete}`, {
+                    method: 'POST'
+                });
+                if (resposta.ok) {
+                    carregarAlertas();
+                } else {
+                    alert("Falha ao registrar confirmação no servidor.");
+                }
+            } catch (erro) {
+                alert("Erro de comunicação com a API PullFlow.");
+            }
+        }
+
+        carregarAlertas();
+        setInterval(carregarAlertas, 5000);
+    </script>
+</body>
+</html>
