@@ -1,3 +1,5 @@
+<img width="1377" height="637" alt="image" src="https://github.com/user-attachments/assets/3037216b-86bc-4edc-b4d6-7a9546e35e2f" />
+
 # PullFlow
 
 Sistema de controle e reposição puxada (Pull System) desenvolvido para agilizar o abastecimento de linhas de produção e a gestão de estoque em porta-pallets, eliminando a necessidade de sensores físicos.
